@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "discord_api",
+    "repl_api",
+    "scraper",
+    "util",
+    "ascii"
+]
