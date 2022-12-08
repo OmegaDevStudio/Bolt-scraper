@@ -1,5 +1,5 @@
 use discord_api::{Discord, Webhook};
-use repl_api::ReplAPI;
+use repl_api::{ReplAPI, ReplGlobal};
 use ascii::{cli, options};
 use util::{search_extract, write_file, fetch_lines};
 use tokio::main;
@@ -53,6 +53,9 @@ async fn main() {
                 },
                 2 => check_tokens().await,
 
+
+                3 => auto_scrape().await,
+
                 _ => continue
             }
             },
@@ -60,6 +63,14 @@ async fn main() {
         }
     }
 
+}
+
+async fn auto_scrape() {
+    let repl = ReplGlobal{};
+    let items = repl.fetch_urls("discord").await;
+    for item in items {
+        println!("{item}");
+    }
 }
 
 async fn check_tokens() {
@@ -100,7 +111,7 @@ async fn check_tokens() {
 
 async fn scrape_url(url: &str, count: u32) {
     let repl = ReplAPI{};
-    let data = repl.fetch_forks_url(url.clone(), count).await;
+    let data = repl.fetch_zips_url(url.clone(), count).await;
     let mut tokens = vec![];
     let mut count = 0;
     for zip in data {

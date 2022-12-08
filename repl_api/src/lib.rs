@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
+use std::collections::HashMap;
+
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use reqwest::Client;
 use tokio::time::{sleep, Duration};
 use futures::{stream::futures_unordered::FuturesUnordered, StreamExt};
@@ -190,7 +192,23 @@ struct Data3 {
 
 #[derive(Deserialize, Debug)]
 struct ReplPosts {
-    replPosts: Items
+    replPosts: Items2
+}
+
+#[derive(Deserialize, Debug)]
+struct Items2 {
+    items: Vec<OtherArray>
+}
+
+#[derive(Deserialize, Debug)]
+struct OtherArray {
+    repl: Repl3
+}
+
+#[derive(Deserialize, Debug)]
+struct Repl3 {
+    id: String,
+    url: String,
 }
 
 pub struct ReplGlobal {}
@@ -219,18 +237,19 @@ impl ReplGlobal {
             .send().await.unwrap();
 
         let repl = resp.json::<StartGlobal>().await;
+
         let mut urls = vec![];
 
         match repl {
             Ok(repl) => {
                 let data = repl.start.data.replPosts.items;
 
-                for repl in data {
-                    urls.push(repl.url);
+                for items in data {
+                    urls.push(items.repl.url);
                 }
             },
-            Err(_) => {
-                println!("Probably ratelimited, sleeping for 10 seconds");
+            Err(e) => {
+                println!("Probably ratelimited, sleeping for 10 seconds\n{e}");
                 sleep(Duration::from_secs(10)).await;
             },
         }
@@ -242,7 +261,7 @@ impl ReplGlobal {
 pub struct ReplAPI {}
 
 impl ReplAPI {
-    pub async fn fetch_forks_url(&self, url: &str, max_count: u32) -> Vec<Vec<u8>> {
+    pub async fn fetch_zips_url(&self, url: &str, max_count: u32) -> Vec<Vec<u8>> {
         let mut futs = FuturesUnordered::new();
         let repl = ReplUrl::new(url);
         let id = repl.fetch_id().await;
