@@ -94,26 +94,26 @@ async fn auto_scrape(query: &str, max: u32) {
 
     for url in urls {
         count += 1;
-        let mut tokens = vec![];
+        let mut unchecked_tokens = vec![];
         if let Some(zip) = fetch_zip(client.clone(), url.clone(), count).await {
             let mut token = search_extract(zip, count).await;
-            tokens.append(&mut token);
+            unchecked_tokens.append(&mut token);
         }
-        let disc = Discord::new(tokens.clone());
+        let disc = Discord::new(unchecked_tokens.clone());
         let valid_users = disc.mass_check_user().await;
         println!("\x1b[0;34m
     ╔════════════════════════╬
     ║ Valid User Tokens: {}
     ║ Total invalid: {}
     ╚════════════════════════╬
-    \x1b[0m", &valid_users.len(), tokens.len() - valid_users.len());
+    \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
         let valid_bots = disc.mass_check_bot().await;
         println!("\x1b[0;34m
     ╔════════════════════════╬
     ║ Valid Bot Tokens: {}
     ║ Total invalid: {}
     ╚════════════════════════╬
-    \x1b[0m", &valid_bots.len(), tokens.len() - valid_bots.len());
+    \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
         write_file("valid.txt", "User Tokens:\n\n").await;
         for token in valid_users.clone() {
             write_file("valid.txt", &format!("{token}\n")).await;
@@ -135,22 +135,22 @@ async fn auto_scrape(query: &str, max: u32) {
 }
 
 async fn check_tokens() {
-    let tokens = fetch_lines("./false_tokens.txt");
-    let disc = Discord::new(tokens.clone());
+    let unchecked_tokens = fetch_lines("./false_tokens.txt");
+    let disc = Discord::new(unchecked_tokens.clone());
     let valid_users = disc.mass_check_user().await;
     println!("\x1b[0;34m
    ╔════════════════════════╬
    ║ Valid User Tokens: {}
    ║ Total invalid: {}
    ╚════════════════════════╬
-   \x1b[0m", &valid_users.len(), tokens.len() - valid_users.len());
+   \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
     let valid_bots = disc.mass_check_bot().await;
     println!("\x1b[0;34m
    ╔════════════════════════╬
    ║ Valid Bot Tokens: {}
    ║ Total invalid: {}
    ╚════════════════════════╬
-   \x1b[0m", &valid_bots.len(), tokens.len() - valid_bots.len());
+   \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
     write_file("valid.txt", "User Tokens:\n\n").await;
     for token in valid_users.clone() {
         write_file("valid.txt", &format!("{token}\n")).await;
@@ -173,31 +173,31 @@ async fn check_tokens() {
 async fn scrape_url(url: &str, count: u32) {
     let repl = ReplAPI{};
     let data = repl.fetch_zips_url(url, count).await;
-    let mut tokens = vec![];
+    let mut unchecked_tokens = vec![];
     let mut count = 0;
     for zip in data {
         count += 1;
         let mut token = search_extract(zip, count).await;
-        tokens.append(&mut token);
+        unchecked_tokens.append(&mut token);
     }
-    for token in tokens.clone() {
+    for token in unchecked_tokens.clone() {
         write_file("false_tokens.txt", &format!("{token}\n")).await;
     }
-    let disc = Discord::new(tokens.clone());
+    let disc = Discord::new(unchecked_tokens.clone());
     let valid_users = disc.mass_check_user().await;
     println!("\x1b[0;34m
    ╔════════════════════════╬
    ║ Valid User Tokens: {}
    ║ Total invalid: {}
    ╚════════════════════════╬
-   \x1b[0m", &valid_users.len(), tokens.len() - valid_users.len());
+   \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
     let valid_bots = disc.mass_check_bot().await;
     println!("\x1b[0;34m
    ╔════════════════════════╬
    ║ Valid Bot Tokens: {}
    ║ Total invalid: {}
    ╚════════════════════════╬
-   \x1b[0m", &valid_bots.len(), tokens.len() - valid_bots.len());
+   \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
     write_file("valid.txt", "User Tokens:\n\n").await;
     for token in valid_users.clone() {
         write_file("valid.txt", &format!("{token}\n")).await;
