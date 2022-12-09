@@ -13,5 +13,15 @@ You may need to increase your File Descriptor limit for your PC if you are doing
 
 **Disclaimer: This tool generally requires a decent internet connection.**
 
+## Features
+
+- [x] Blazing fast speeds 🔥
+- [x] Inbuilt Token checker - with webhook sending
+- [x] Auto-scraping 🤖
+- [ ] Proxy Support (upcoming)
+- [ ] Token Information (upcoming)
+
+##
+
 ## Help & Support
 - My [discord server](https://discord.gg/jD4C57AJg6)
