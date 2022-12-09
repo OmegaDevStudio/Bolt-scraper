@@ -21,7 +21,6 @@ You may need to increase your File Descriptor limit for your PC if you are doing
 - [ ] Proxy Support (upcoming)
 - [ ] Token Information (upcoming)
 
-##
 
 ## Help & Support
 - My [discord server](https://discord.gg/jD4C57AJg6)
