@@ -1,77 +1,73 @@
 #![allow(non_snake_case)]
-use std::collections::HashMap;
-
-use serde::Deserialize;
-use serde_json::{json, Value};
-use reqwest::Client;
-use tokio::time::{sleep, Duration};
 use futures::{stream::futures_unordered::FuturesUnordered, StreamExt};
-
+use reqwest::Client;
+use serde::Deserialize;
+use serde_json::json;
+use tokio::time::{sleep, Duration};
 
 const GRAPHQL: &str = "https://replit.com/graphql";
 
-
 #[derive(Deserialize, Debug)]
 struct Startid {
-    start: Data
+    start: Data,
 }
 #[derive(Deserialize, Debug)]
 struct Data {
-    data: Repl
+    data: Repl,
 }
 #[derive(Deserialize, Debug)]
 struct Repl {
-    repl: Id
+    repl: Id,
 }
 #[derive(Deserialize, Debug)]
 struct Id {
     id: String,
 }
 
-
-
 // For get forks
 
 #[derive(Deserialize, Debug)]
 struct StartFork {
-    start: Data2
+    start: Data2,
 }
 
 #[derive(Deserialize, Debug)]
 struct Data2 {
-    data: Repl2
+    data: Repl2,
 }
 
 #[derive(Deserialize, Debug)]
 struct Repl2 {
-    repl: PublicForks
+    repl: PublicForks,
 }
 
 #[derive(Deserialize, Debug)]
 struct PublicForks {
     publicForks: Items,
-    publicForkCount: usize
+    publicForkCount: usize,
 }
 
 #[derive(Deserialize, Debug)]
 struct Items {
-    items: Vec<MainArray>
+    items: Vec<MainArray>,
 }
 
 #[derive(Deserialize, Debug)]
 struct MainArray {
     url: String,
-    id: String
+    id: String,
 }
 
 #[derive(Clone)]
 struct ReplUrl {
-    url: String
+    url: String,
 }
 
 impl ReplUrl {
     fn new(url: &str) -> Self {
-        Self { url: url.to_string()}
+        Self {
+            url: url.to_string(),
+        }
     }
 
     async fn fetch_id(&self) -> String {
@@ -96,10 +92,9 @@ impl ReplUrl {
         .send().await;
         match resp {
             Ok(resp) => resp.json::<Startid>().await.unwrap().start.data.repl.id,
-            Err(e) => panic!("Could not get Repl ID: {e}")
+            Err(e) => panic!("Could not get Repl ID: {e}"),
         }
     }
-
 
     async fn fetch_forks(&self, id: &str) -> Vec<String> {
         let json = json!([
@@ -113,149 +108,235 @@ impl ReplUrl {
             }
         ]);
         let client = Client::new();
-        let resp = client.post(GRAPHQL)
-        .header("host", "replit.com")
-        .header("user-agent", "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0")
-        .header("origin", "https://replit.com")
-        .header("connection", "keep-alive")
-        .header("x-requested-with", "XMLHttpRequest")
-        .json(&json)
-        .send().await.unwrap();
+        let resp = client
+            .post(GRAPHQL)
+            .header("host", "replit.com")
+            .header(
+                "user-agent",
+                "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0",
+            )
+            .header("origin", "https://replit.com")
+            .header("connection", "keep-alive")
+            .header("x-requested-with", "XMLHttpRequest")
+            .json(&json)
+            .send()
+            .await
+            .unwrap();
 
         let repl = resp.json::<StartFork>().await.unwrap().start.data.repl;
         let count = repl.publicForkCount;
         println!("\x1b[0;92mFound {count} forks...\x1b[0m");
         let forks = repl.publicForks.items;
-        let mut urls: Vec<String> = vec!();
-        let mut ids: Vec<String> = vec!();
+        let mut urls: Vec<String> = vec![];
+        let mut ids: Vec<String> = vec![];
         for fork in forks {
             urls.push(fork.url);
             ids.push(fork.id);
         }
-        loop {
-            let json2 = json!([
-                {
-                "operationName":"ReplViewForks",
-                    "variables":{
-                        "replId": id,
-                        "count":500,
-                        "after": ids.last().unwrap()
-                    },
-                "query":"query ReplViewForks($replId: String!, $count: Int!, $after: String) {\n  repl(id: $replId) {\n    ... on Repl {\n      id\n      publicForkCount\n      publicReleasesForkCount\n      publicForks(count: $count, after: $after) {\n        items {\n          id\n          ...ReplPostReplCardRepl\n          __typename\n        }\n        pageInfo {\n          nextCursor\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ReplPostReplCardRepl on Repl {\n  id\n  iconUrl\n  description(plainText: true)\n  ...ReplPostReplInfoRepl\n  ...ReplStatsRepl\n  ...ReplLinkRepl\n  tags {\n    id\n    ...PostsFeedNavTag\n    __typename\n  }\n  owner {\n    ... on Team {\n      id\n      username\n      url\n      image\n      __typename\n    }\n    ... on User {\n      id\n      username\n      url\n      image\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment ReplPostReplInfoRepl on Repl {\n  id\n  title\n  description(plainText: true)\n  imageUrl\n  iconUrl\n  templateInfo {\n    label\n    iconUrl\n    __typename\n  }\n  __typename\n}\n\nfragment ReplStatsRepl on Repl {\n  id\n  likeCount\n  runCount\n  commentCount\n  __typename\n}\n\nfragment ReplLinkRepl on Repl {\n  id\n  url\n  nextPagePathname\n  __typename\n}\n\nfragment PostsFeedNavTag on Tag {\n  id\n  isOfficial\n  __typename\n}\n"
-                }
-            ]);
-            let resp = client.post(GRAPHQL)
-            .header("host", "replit.com")
-            .header("user-agent", "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0")
-            .header("origin", "https://replit.com")
-            .header("connection", "keep-alive")
-            .header("x-requested-with", "XMLHttpRequest")
-            .json(&json2)
-            .send().await.unwrap();
-
-            let repl = resp.json::<StartFork>().await;
-
-            match repl {
-                Ok(repl) => {
-                    let repl = repl.start.data.repl;
-                    let forks = repl.publicForks.items;
-
-                if !forks.is_empty() {
-                    for fork in forks {
-                        urls.push(fork.url);
-                        ids.push(fork.id);
+        if ids.last().is_some() {
+            loop {
+                let json2 = json!([
+                    {
+                    "operationName":"ReplViewForks",
+                        "variables":{
+                            "replId": id,
+                            "count":500,
+                            "after": ids.last().unwrap()
+                        },
+                    "query":"query ReplViewForks($replId: String!, $count: Int!, $after: String) {\n  repl(id: $replId) {\n    ... on Repl {\n      id\n      publicForkCount\n      publicReleasesForkCount\n      publicForks(count: $count, after: $after) {\n        items {\n          id\n          ...ReplPostReplCardRepl\n          __typename\n        }\n        pageInfo {\n          nextCursor\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ReplPostReplCardRepl on Repl {\n  id\n  iconUrl\n  description(plainText: true)\n  ...ReplPostReplInfoRepl\n  ...ReplStatsRepl\n  ...ReplLinkRepl\n  tags {\n    id\n    ...PostsFeedNavTag\n    __typename\n  }\n  owner {\n    ... on Team {\n      id\n      username\n      url\n      image\n      __typename\n    }\n    ... on User {\n      id\n      username\n      url\n      image\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment ReplPostReplInfoRepl on Repl {\n  id\n  title\n  description(plainText: true)\n  imageUrl\n  iconUrl\n  templateInfo {\n    label\n    iconUrl\n    __typename\n  }\n  __typename\n}\n\nfragment ReplStatsRepl on Repl {\n  id\n  likeCount\n  runCount\n  commentCount\n  __typename\n}\n\nfragment ReplLinkRepl on Repl {\n  id\n  url\n  nextPagePathname\n  __typename\n}\n\nfragment PostsFeedNavTag on Tag {\n  id\n  isOfficial\n  __typename\n}\n"
                     }
-                println!("\x1b[0;34m{} forks loaded...\x1b[0m", urls.len());
-                } else {
-                    break;
+                ]);
+                let resp = client
+                    .post(GRAPHQL)
+                    .header("host", "replit.com")
+                    .header(
+                        "user-agent",
+                        "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0",
+                    )
+                    .header("origin", "https://replit.com")
+                    .header("connection", "keep-alive")
+                    .header("x-requested-with", "XMLHttpRequest")
+                    .json(&json2)
+                    .send()
+                    .await
+                    .unwrap();
+
+                let repl = resp.json::<StartFork>().await;
+
+                match repl {
+                    Ok(repl) => {
+                        let repl = repl.start.data.repl;
+                        let forks = repl.publicForks.items;
+
+                        if !forks.is_empty() {
+                            for fork in forks {
+                                urls.push(fork.url);
+                                ids.push(fork.id);
+                            }
+                            println!("\x1b[0;34m{} forks loaded...\x1b[0m", urls.len());
+                        } else {
+                            break;
+                        }
+                    }
+                    Err(_) => {
+                        println!("Probably ratelimited, sleeping for 10 seconds");
+                        sleep(Duration::from_secs(10)).await;
+                    }
                 }
-                },
-                Err(_) => {
-                    println!("Probably ratelimited, sleeping for 10 seconds");
-                    sleep(Duration::from_secs(10)).await;
-                },
             }
         }
         urls
     }
 }
 
-
 #[derive(Deserialize, Debug)]
 struct StartGlobal {
-    start: Data3
+    start: Data3,
 }
 #[derive(Deserialize, Debug)]
 struct Data3 {
-    data: ReplPosts
+    data: ReplPosts,
 }
 
 #[derive(Deserialize, Debug)]
 struct ReplPosts {
-    replPosts: Items2
+    replPosts: Items2,
 }
 
 #[derive(Deserialize, Debug)]
 struct Items2 {
-    items: Vec<OtherArray>
+    pageInfo: PageInfo,
+    items: Vec<OtherArray>,
+}
+
+#[derive(Deserialize, Debug)]
+struct PageInfo {
+    nextCursor: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 struct OtherArray {
-    repl: Repl3
+    repl: Repl3,
 }
 
 #[derive(Deserialize, Debug)]
 struct Repl3 {
-    id: String,
     url: String,
 }
 
 pub struct ReplGlobal {}
 
 impl ReplGlobal {
-    pub async fn fetch_urls(&self, query: &str) -> Vec<String> {
+    async fn fetch_urls(&self, query: &str, order: &str, max: u32) -> Vec<String> {
+
         let json = json!([
             {
                 "operationName":"ReplPostsFeed",
                 "variables":{
                     "options":{
-                        "tags":[query],"order":"Top"
+                        "tags":[query],"order":order
                     }
                 },
                 "query":"query ReplPostsFeed($options: ReplPostsQueryOptions) {\n  currentUser {\n    id\n    ...ReplPostCurrentUser\n    __typename\n  }\n  replPosts(options: $options) {\n    pageInfo {\n      nextCursor\n      __typename\n    }\n    items {\n      id\n      ...ReplPostPost\n      ...ReplCardPostPost\n      ...OldPostPost\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ReplPostCurrentUser on CurrentUser {\n  id\n  isModerator: hasRole(role: MODERATOR)\n  isAdmin: hasRole(role: ADMIN)\n  ...LikeButtonCurrentUser\n  __typename\n}\n\nfragment LikeButtonCurrentUser on CurrentUser {\n  id\n  isVerified\n  __typename\n}\n\nfragment ReplPostPost on Post {\n  id\n  title\n  timeCreated\n  isPinned\n  isAnnouncement\n  ...ReplViewPostActionPermissions\n  replComment {\n    id\n    body(removeMarkdown: true)\n    __typename\n  }\n  repl {\n    id\n    ...ReplViewReplActionsPermissions\n    ...ReplPostRepl\n    __typename\n  }\n  user {\n    id\n    ...ReplPostUserPostUser\n    __typename\n  }\n  recentReplComments {\n    id\n    ...ReplPostReplComment\n    __typename\n  }\n  __typename\n}\n\nfragment ReplViewPostActionPermissions on Post {\n  id\n  isHidden\n  __typename\n}\n\nfragment ReplViewReplActionsPermissions on Repl {\n  id\n  slug\n  lastPublishedAt\n  publishedAs\n  owner {\n    ... on User {\n      id\n      username\n      __typename\n    }\n    ... on Team {\n      id\n      username\n      __typename\n    }\n    __typename\n  }\n  templateReview {\n    id\n    promoted\n    __typename\n  }\n  currentUserPermissions {\n    publish\n    __typename\n  }\n  ...UnpublishReplRepl\n  __typename\n}\n\nfragment UnpublishReplRepl on Repl {\n  id\n  commentCount\n  likeCount\n  runCount\n  publishedAs\n  __typename\n}\n\nfragment ReplPostRepl on Repl {\n  id\n  ...ReplPostReplInfoRepl\n  ...LikeButtonRepl\n  ...ReplStatsRepl\n  tags {\n    id\n    ...PostsFeedNavTag\n    __typename\n  }\n  __typename\n}\n\nfragment ReplPostReplInfoRepl on Repl {\n  id\n  title\n  description(plainText: true)\n  imageUrl\n  iconUrl\n  templateInfo {\n    label\n    iconUrl\n    __typename\n  }\n  __typename\n}\n\nfragment LikeButtonRepl on Repl {\n  id\n  currentUserDidLike\n  likeCount\n  url\n  wasPosted\n  wasPublished\n  __typename\n}\n\nfragment ReplStatsRepl on Repl {\n  id\n  likeCount\n  runCount\n  commentCount\n  __typename\n}\n\nfragment PostsFeedNavTag on Tag {\n  id\n  isOfficial\n  __typename\n}\n\nfragment ReplPostUserPostUser on User {\n  id\n  username\n  image\n  ...UserLinkUser\n  __typename\n}\n\nfragment UserLinkUser on User {\n  id\n  url\n  username\n  __typename\n}\n\nfragment ReplPostReplComment on ReplComment {\n  id\n  body\n  timeCreated\n  user {\n    id\n    ...ReplPostRecentCommentUser\n    __typename\n  }\n  __typename\n}\n\nfragment ReplPostRecentCommentUser on User {\n  id\n  username\n  image\n  ...UserLinkUser\n  __typename\n}\n\nfragment ReplCardPostPost on Post {\n  id\n  title\n  timeCreated\n  isPinned\n  isAnnouncement\n  ...ReplViewPostActionPermissions\n  repl {\n    id\n    ...ReplViewReplActionsPermissions\n    ...ReplCardPostRepl\n    __typename\n  }\n  recentReplComments {\n    id\n    ...ReplPostReplComment\n    __typename\n  }\n  user {\n    id\n    ...ReplPostUserPostUser\n    __typename\n  }\n  __typename\n}\n\nfragment ReplCardPostRepl on Repl {\n  id\n  ...LikeButtonRepl\n  ...ReplPostReplCardRepl\n  recentComments {\n    id\n    ...ReplPostReplComment\n    __typename\n  }\n  __typename\n}\n\nfragment ReplPostReplCardRepl on Repl {\n  id\n  iconUrl\n  description(plainText: true)\n  ...ReplPostReplInfoRepl\n  ...ReplStatsRepl\n  ...ReplLinkRepl\n  tags {\n    id\n    ...PostsFeedNavTag\n    __typename\n  }\n  owner {\n    ... on Team {\n      id\n      username\n      url\n      image\n      __typename\n    }\n    ... on User {\n      id\n      username\n      url\n      image\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment ReplLinkRepl on Repl {\n  id\n  url\n  nextPagePathname\n  __typename\n}\n\nfragment OldPostPost on Post {\n  id\n  title\n  preview(removeMarkdown: true, length: 150)\n  url\n  commentCount\n  isPinned\n  isAnnouncement\n  timeCreated\n  ...PostLinkPost\n  user {\n    id\n    ...ReplPostUserPostUser\n    __typename\n  }\n  repl {\n    id\n    ...ReplPostRepl\n    __typename\n  }\n  board {\n    id\n    name\n    color\n    __typename\n  }\n  recentComments(count: 3) {\n    id\n    preview(removeMarkdown: true, length: 500)\n    timeCreated\n    user {\n      id\n      ...ReplPostRecentCommentUser\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment PostLinkPost on Post {\n  id\n  url\n  __typename\n}\n"}
 
         ]);
         let client = Client::new();
-        let resp = client.post(GRAPHQL)
+        let resp = client
+            .post(GRAPHQL)
             .header("host", "replit.com")
-            .header("user-agent", "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0")
+            .header(
+                "user-agent",
+                "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0",
+            )
             .header("origin", "https://replit.com")
             .header("connection", "keep-alive")
             .header("x-requested-with", "XMLHttpRequest")
             .json(&json)
-            .send().await.unwrap();
+            .send()
+            .await
+            .unwrap();
 
         let repl = resp.json::<StartGlobal>().await;
 
         let mut urls = vec![];
-
+        let mut after = vec![];
         match repl {
             Ok(repl) => {
+                after.push(repl.start.data.replPosts.pageInfo.nextCursor);
                 let data = repl.start.data.replPosts.items;
 
                 for items in data {
                     urls.push(items.repl.url);
+
                 }
-            },
+            }
             Err(e) => {
                 println!("Probably ratelimited, sleeping for 10 seconds\n{e}");
                 sleep(Duration::from_secs(10)).await;
-            },
+            }
+        }
+        for _i in 0..max {
+            if after.last().unwrap().is_some() {
+                let json = json!([{
+                    "operationName":"ReplPostsFeed",
+                    "variables":{
+                        "options":{
+                            "tags":[query],
+                            "order":order,
+                            "after":after.last().unwrap()
+                        }
+                    },
+                    "query":"query ReplPostsFeed($options: ReplPostsQueryOptions) {\n  currentUser {\n    id\n    ...ReplPostCurrentUser\n    __typename\n  }\n  replPosts(options: $options) {\n    pageInfo {\n      nextCursor\n      __typename\n    }\n    items {\n      id\n      ...ReplPostPost\n      ...ReplCardPostPost\n      ...OldPostPost\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ReplPostCurrentUser on CurrentUser {\n  id\n  isModerator: hasRole(role: MODERATOR)\n  isAdmin: hasRole(role: ADMIN)\n  ...LikeButtonCurrentUser\n  __typename\n}\n\nfragment LikeButtonCurrentUser on CurrentUser {\n  id\n  isVerified\n  __typename\n}\n\nfragment ReplPostPost on Post {\n  id\n  title\n  timeCreated\n  isPinned\n  isAnnouncement\n  ...ReplViewPostActionPermissions\n  replComment {\n    id\n    body(removeMarkdown: true)\n    __typename\n  }\n  repl {\n    id\n    ...ReplViewReplActionsPermissions\n    ...ReplPostRepl\n    __typename\n  }\n  user {\n    id\n    ...ReplPostUserPostUser\n    __typename\n  }\n  recentReplComments {\n    id\n    ...ReplPostReplComment\n    __typename\n  }\n  __typename\n}\n\nfragment ReplViewPostActionPermissions on Post {\n  id\n  isHidden\n  __typename\n}\n\nfragment ReplViewReplActionsPermissions on Repl {\n  id\n  slug\n  lastPublishedAt\n  publishedAs\n  owner {\n    ... on User {\n      id\n      username\n      __typename\n    }\n    ... on Team {\n      id\n      username\n      __typename\n    }\n    __typename\n  }\n  templateReview {\n    id\n    promoted\n    __typename\n  }\n  currentUserPermissions {\n    publish\n    __typename\n  }\n  ...UnpublishReplRepl\n  __typename\n}\n\nfragment UnpublishReplRepl on Repl {\n  id\n  commentCount\n  likeCount\n  runCount\n  publishedAs\n  __typename\n}\n\nfragment ReplPostRepl on Repl {\n  id\n  ...ReplPostReplInfoRepl\n  ...LikeButtonRepl\n  ...ReplStatsRepl\n  tags {\n    id\n    ...PostsFeedNavTag\n    __typename\n  }\n  __typename\n}\n\nfragment ReplPostReplInfoRepl on Repl {\n  id\n  title\n  description(plainText: true)\n  imageUrl\n  iconUrl\n  templateInfo {\n    label\n    iconUrl\n    __typename\n  }\n  __typename\n}\n\nfragment LikeButtonRepl on Repl {\n  id\n  currentUserDidLike\n  likeCount\n  url\n  wasPosted\n  wasPublished\n  __typename\n}\n\nfragment ReplStatsRepl on Repl {\n  id\n  likeCount\n  runCount\n  commentCount\n  __typename\n}\n\nfragment PostsFeedNavTag on Tag {\n  id\n  isOfficial\n  __typename\n}\n\nfragment ReplPostUserPostUser on User {\n  id\n  username\n  image\n  ...UserLinkUser\n  __typename\n}\n\nfragment UserLinkUser on User {\n  id\n  url\n  username\n  __typename\n}\n\nfragment ReplPostReplComment on ReplComment {\n  id\n  body\n  timeCreated\n  user {\n    id\n    ...ReplPostRecentCommentUser\n    __typename\n  }\n  __typename\n}\n\nfragment ReplPostRecentCommentUser on User {\n  id\n  username\n  image\n  ...UserLinkUser\n  __typename\n}\n\nfragment ReplCardPostPost on Post {\n  id\n  title\n  timeCreated\n  isPinned\n  isAnnouncement\n  ...ReplViewPostActionPermissions\n  repl {\n    id\n    ...ReplViewReplActionsPermissions\n    ...ReplCardPostRepl\n    __typename\n  }\n  recentReplComments {\n    id\n    ...ReplPostReplComment\n    __typename\n  }\n  user {\n    id\n    ...ReplPostUserPostUser\n    __typename\n  }\n  __typename\n}\n\nfragment ReplCardPostRepl on Repl {\n  id\n  ...LikeButtonRepl\n  ...ReplPostReplCardRepl\n  recentComments {\n    id\n    ...ReplPostReplComment\n    __typename\n  }\n  __typename\n}\n\nfragment ReplPostReplCardRepl on Repl {\n  id\n  iconUrl\n  description(plainText: true)\n  ...ReplPostReplInfoRepl\n  ...ReplStatsRepl\n  ...ReplLinkRepl\n  tags {\n    id\n    ...PostsFeedNavTag\n    __typename\n  }\n  owner {\n    ... on Team {\n      id\n      username\n      url\n      image\n      __typename\n    }\n    ... on User {\n      id\n      username\n      url\n      image\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment ReplLinkRepl on Repl {\n  id\n  url\n  nextPagePathname\n  __typename\n}\n\nfragment OldPostPost on Post {\n  id\n  title\n  preview(removeMarkdown: true, length: 150)\n  url\n  commentCount\n  isPinned\n  isAnnouncement\n  timeCreated\n  ...PostLinkPost\n  user {\n    id\n    ...ReplPostUserPostUser\n    __typename\n  }\n  repl {\n    id\n    ...ReplPostRepl\n    __typename\n  }\n  board {\n    id\n    name\n    color\n    __typename\n  }\n  recentComments(count: 3) {\n    id\n    preview(removeMarkdown: true, length: 500)\n    timeCreated\n    user {\n      id\n      ...ReplPostRecentCommentUser\n      __typename\n    }\n    __typename\n  }\n  __typename\n}\n\nfragment PostLinkPost on Post {\n  id\n  url\n  __typename\n}\n"}]);
+
+                let resp = client
+                    .post(GRAPHQL)
+                    .header("host", "replit.com")
+                    .header(
+                        "user-agent",
+                        "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0",
+                    )
+                    .header("origin", "https://replit.com")
+                    .header("connection", "keep-alive")
+                    .header("x-requested-with", "XMLHttpRequest")
+                    .json(&json)
+                    .send()
+                    .await
+                    .unwrap();
+
+                let repl = resp.json::<StartGlobal>().await;
+
+                match repl {
+                    Ok(repl) => {
+                        after.push(repl.start.data.replPosts.pageInfo.nextCursor);
+                        let data = repl.start.data.replPosts.items;
+
+                        if !data.is_empty() {
+                            for items in data {
+                                urls.push(items.repl.url);
+                            }
+                        } else {
+                            break;
+                        }
+                    },
+                    Err(e) => {
+                        println!("Probably ratelimited, sleeping for 10 seconds\n{e}");
+                        // sleep(Duration::from_secs(10)).await;
+                    },
+                }
+
+            }
         }
         urls
     }
 
+    pub async fn fech_urls(&self, query: &str, max: u32) -> Vec<String> {
+        let mut urls =vec![];
+
+        urls.append(&mut self.fetch_urls(query, "Top",max).await);
+        urls.append(&mut self.fetch_urls(query, "Hot",max).await);
+        urls.append(&mut self.fetch_urls(query, "New",max).await);
+        urls
+    }
 }
 
 pub struct ReplAPI {}
@@ -270,12 +351,16 @@ impl ReplAPI {
         let client = Client::new();
         let mut count = 1;
         let mut chunk_count = 0;
-        let mut zips = vec!();
+        let mut zips = vec![];
         while let Some(url) = urls.next() {
             futs.push(fetch_zip(client.clone(), url, count));
             count += 1;
             chunk_count += 1;
-            if urls.peek().is_none() || chunk_count >= 50 || chunk_count >= max_count || count >= max_count {
+            if urls.peek().is_none()
+                || chunk_count >= 50
+                || chunk_count >= max_count
+                || count >= max_count
+            {
                 while let Some(val) = futs.next().await {
                     if let Some(val) = val {
                         zips.push(val)
@@ -283,13 +368,23 @@ impl ReplAPI {
                 }
                 chunk_count = 0;
             }
-            if count > max_count { break }
+            if count > max_count {
+                break;
+            }
         }
         zips
     }
 
+    pub async fn fetch_urls_global(&self, urls: Vec<String>) -> Vec<String> {
+        let mut all_urls = vec![];
+        for url in urls {
+            let repl = ReplUrl::new(&url);
+            let id = repl.fetch_id().await;
+            all_urls.append(&mut repl.fetch_forks(&id).await);
+        }
+        all_urls
+    }
 }
-
 
 pub async fn fetch_zip(client: Client, url: String, count: u32) -> Option<Vec<u8>> {
     let url = format!("https://replit.com{url}.zip");
@@ -315,29 +410,39 @@ pub async fn fetch_zip(client: Client, url: String, count: u32) -> Option<Vec<u8
         match resp {
             Ok(resp) => {
                 if resp.status().is_success() {
-                match resp.bytes().await {
-                    Ok(bytes) => {
-                        src = bytes.to_vec();
-                        println!("\x1b[0;34mFinished downloading fork {}...\x1b[0m", &count);
-                        return Some(src)
-                    } Err(e) => {
-                        println!("\x1b[0;91mError: {e}\x1b[0m");
-                        return None
+                    match resp.bytes().await {
+                        Ok(bytes) => {
+                            src = bytes.to_vec();
+                            println!("\x1b[0;34mFinished downloading fork {}...\x1b[0m", &count);
+                            return Some(src);
+                        }
+                        Err(e) => {
+                            println!("\x1b[0;91mError: {e}\x1b[0m");
+                            return None;
+                        }
                     }
-                }
                 } else if resp.status().as_str() == "429" {
-                match resp.headers().get("retry-after") {
-                    Some(retry) => {
-                        println!("\x1b[0;91mRatelimited... Waiting for {} seconds\x1b[0m", retry.to_str().unwrap());
-                        sleep(Duration::from_secs(retry.to_str().unwrap().to_string().parse::<u64>().unwrap())).await;
-                    },
-                    None => return None,
-                }
+                    match resp.headers().get("retry-after") {
+                        Some(retry) => {
+                            println!(
+                                "\x1b[0;91mRatelimited... Waiting for {} seconds\x1b[0m",
+                                retry.to_str().unwrap()
+                            );
+                            sleep(Duration::from_secs(
+                                retry.to_str().unwrap().to_string().parse::<u64>().unwrap(),
+                            ))
+                            .await;
+                        }
+                        None => return None,
+                    }
                 } else {
-                println!("\x1b[0;91mFailed to retrieve zip. Error: {}\x1b[0m", resp.status().as_str());
-                return None
+                    println!(
+                        "\x1b[0;91mFailed to retrieve zip. Error: {}\x1b[0m",
+                        resp.status().as_str()
+                    );
+                    return None;
                 }
-            },
+            }
             Err(_) => continue,
         }
     }

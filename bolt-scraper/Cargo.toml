@@ -1,7 +1,11 @@
+cargo-features = ["profile-rustflags"]
 [package]
-name = "scraper"
-version = "0.1.0"
-edition = "2021"
+name = "bolt-scraper"
+version.workspace = true
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,3 +17,9 @@ ascii = { path = "../ascii" }
 tokio = { version = "1.23.0", features = ["full"] }
 serde = { version = "1.0.149", features = ["derive"] }
 serde_json = "1.0.89"
+reqwest = { version = "0.11.13", features = ["json"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+rustflags = ["-Ctarget-cpu=native"]

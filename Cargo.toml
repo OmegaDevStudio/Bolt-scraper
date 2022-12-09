@@ -3,7 +3,14 @@
 members = [
     "discord_api",
     "repl_api",
-    "scraper",
+    "bolt-scraper",
     "util",
     "ascii"
 ]
+
+[workspace.package]
+version = "1.0.0"
+authors = ["Shell", "OMEGA"]
+edition = "2021"
+description = "A replit token scraper"
+repository = "https://github.com/Shell1010/Bolt-scraper"
