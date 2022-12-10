@@ -389,7 +389,6 @@ impl ReplAPI {
 pub async fn fetch_zip(client: Client, url: String, count: u32) -> Option<Vec<u8>> {
     let url = format!("https://replit.com{url}.zip");
     println!("\x1b[0;93mStarted downloading fork {}...\x1b[0m", &count);
-    let src: Vec<u8>;
     loop {
         let resp = client.get(&url)
         .header("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")
@@ -410,17 +409,23 @@ pub async fn fetch_zip(client: Client, url: String, count: u32) -> Option<Vec<u8
         match resp {
             Ok(resp) => {
                 if resp.status().is_success() {
-                    match resp.bytes().await {
-                        Ok(bytes) => {
-                            src = bytes.to_vec();
-                            println!("\x1b[0;34mFinished downloading fork {}...\x1b[0m", &count);
-                            return Some(src);
+                    let mut src = vec![];
+                    let mut bytes = resp.bytes_stream();
+                    while let Some(bytes) = bytes.next().await {
+                        match bytes {
+                            Ok(bytes) => {
+                                src.append(&mut bytes.to_vec());
+                            }
+                            Err(e) => {
+                                println!("\x1b[0;91mError: {e}\x1b[0m");
+                                return None;
+                            }
                         }
-                        Err(e) => {
-                            println!("\x1b[0;91mError: {e}\x1b[0m");
-                            return None;
-                        }
+
                     }
+                    println!("\x1b[0;34mFinished downloading fork {}...\x1b[0m", &count);
+                    return Some(src);
+
                 } else if resp.status().as_str() == "429" {
                     match resp.headers().get("retry-after") {
                         Some(retry) => {
