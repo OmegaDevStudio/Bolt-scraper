@@ -15,8 +15,8 @@ pub enum Token {
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Token::Bot(x) => write!(f, "{}", x.to_string()),
-            Token::User(x) => write!(f, "{}", x.to_string()),
+            Token::Bot(x) => write!(f, "{}", x),
+            Token::User(x) => write!(f, "{}", x),
         }
     }
 }

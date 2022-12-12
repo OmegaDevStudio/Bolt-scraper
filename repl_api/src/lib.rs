@@ -415,7 +415,7 @@ pub async fn fetch_zip(client: Client, url: String, count: u32) -> Option<Vec<u8
                         match bytes {
                             Ok(bytes) => {
                                 src.append(&mut bytes.to_vec());
-                            }
+                            },
                             Err(e) => {
                                 println!("\x1b[0;91mError: {e}\x1b[0m");
                                 return None;

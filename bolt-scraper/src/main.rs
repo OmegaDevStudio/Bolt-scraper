@@ -1,6 +1,6 @@
 use discord_api::{Discord, Webhook};
 use repl_api::{ReplAPI, ReplGlobal, fetch_zip};
-use ascii::{cli, options};
+use ascii::{cli, options, clear};
 use util::{search_extract, write_file, fetch_lines};
 use tokio::main;
 use std::io::{stdin, stdout, Write};
@@ -18,6 +18,10 @@ struct Config {
 
 #[main()]
 async fn main() {
+    if cfg!(target_os = "windows") {
+        std::process::Command::new("cmd").arg("/C").arg("color");
+    }
+    clear();
     cli();
     loop {
 
