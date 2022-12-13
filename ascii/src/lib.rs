@@ -10,22 +10,22 @@ pub fn clear() {
 
 pub fn cli() {
     println!("{}", "
-     ▀██▀▀█▄    ▄▄█▀▀██   ▀██▀     █▀▀██▀▀█
-      ██   ██  ▄█▀    ██   ██         ██
-      ██▀▀▀█▄  ██      ██  ██         ██
-      ██    ██ ▀█▄     ██  ██         ██
-     ▄██▄▄▄█▀   ▀▀█▄▄▄█▀  ▄██▄▄▄▄▄█  ▄██▄
+▀██▀▀█▄    ▄▄█▀▀██   ▀██▀     █▀▀██▀▀█
+ ██   ██  ▄█▀    ██   ██         ██
+ ██▀▀▀█▄  ██      ██  ██         ██
+ ██    ██ ▀█▄     ██  ██         ██
+▄██▄▄▄█▀   ▀▀█▄▄▄█▀  ▄██▄▄▄▄▄█  ▄██▄
     ".gradient_with_color(Color::LightCyan, Color::Magenta));
 }
 
 
 pub fn options() {
     println!("{}", "
-    ╔══════════════════╬═════════════════╗
-    ║  1. Scrape forks from inputted URL ║
-    ╬  2. Check the tokens in tokens.txt ╬
-    ║  3. Auto scrape from query         ║
-    ╚══════════════════╬═════════════════╝
+╔══════════════════╬═════════════════╗
+║  1. Scrape forks from inputted URL ║
+╬  2. Check the tokens in tokens.txt ╬
+║  3. Auto scrape from query         ║
+╚══════════════════╬═════════════════╝
     "
     .gradient_with_color(Color::LightCyan, Color::LightMagenta));
 }

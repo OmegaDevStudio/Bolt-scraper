@@ -26,7 +26,10 @@ async fn main() {
     loop {
 
         options();
-        print!("\x1b[0;92mPlease enter an Option: [>]\x1b[0m ");
+        print!("
+\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter an Option ╬
+\x1b[0;34m║
+\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
         stdout().flush().unwrap();
         let mut option = String::new();
         stdin()
@@ -39,14 +42,20 @@ async fn main() {
             match option {
                 1 => {
                     let mut url = String::new();
-                    print!("\x1b[0;92mExample URL: /@someone/repo\nPlease enter a URL to scrape: [>]\x1b[0m ");
+                    print!("
+\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter a URL to scrape ╬ Example URL: /@someone/repo ╬
+\x1b[0;34m║
+\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
                     stdout().flush().unwrap();
                     stdin()
                         .read_line(&mut url)
                         .expect("Failed to read line");
 
                     let mut max = String::new();
-                    print!("\x1b[0;92mPlease enter an amount to scrape: [>]\x1b[0m ");
+                    print!("
+\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter the maximum you want to scrape ╬
+\x1b[0;34m║
+\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
                     stdout().flush().unwrap();
                     stdin()
                         .read_line(&mut max)
@@ -61,22 +70,19 @@ async fn main() {
 
 
                 3 => {
-                    let mut query = String::new();
-                    print!("\x1b[0;92mExample Query: discord\nPlease enter a Query to search: [>]\x1b[0m ");
-                    stdout().flush().unwrap();
-                    stdin()
-                        .read_line(&mut query)
-                        .expect("Failed to read line");
 
                     let mut max = String::new();
-                    print!("\x1b[0;92mPlease enter a max amount to scrape per URL: [>]\x1b[0m ");
+                    print!("
+\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter the maximum you want to scrape ╬
+\x1b[0;34m║
+\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
                     stdout().flush().unwrap();
                     stdin()
                         .read_line(&mut max)
                         .expect("Failed to read line");
 
                     let max = max.trim().parse::<u32>().unwrap();
-                    auto_scrape(query.trim(), max).await
+                    auto_scrape(max).await
                 },
 
                 _ => continue
@@ -88,11 +94,18 @@ async fn main() {
 
 }
 
-async fn auto_scrape(query: &str, max: u32) {
+async fn auto_scrape(max: u32) {
     let repl = ReplGlobal{};
-    let urls = repl.fech_urls(query, max).await;
+    let mut gathered = tokio::join!(repl.fech_urls("discord", max), repl.fech_urls("selfbot", max), repl.fech_urls("discord bot", max));
     let repl = ReplAPI{};
+    let mut urls = vec![];
+
+    urls.append(&mut gathered.0);
+    urls.append(&mut gathered.1);
+    urls.append(&mut gathered.2);
     let urls = repl.fetch_urls_global(urls).await;
+
+
     let client = Client::new();
     let mut count = 0;
 
