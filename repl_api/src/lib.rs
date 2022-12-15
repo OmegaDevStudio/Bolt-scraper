@@ -320,7 +320,7 @@ impl ReplGlobal {
                     },
                     Err(e) => {
                         println!("Probably ratelimited, sleeping for 10 seconds\n{e}");
-                        // sleep(Duration::from_secs(10)).await;
+                        sleep(Duration::from_secs(10)).await;
                     },
                 }
 
@@ -338,6 +338,148 @@ impl ReplGlobal {
         urls
     }
 }
+
+#[derive(Deserialize, Debug)]
+struct StartUser {
+    start: Data4,
+}
+
+#[derive(Deserialize, Debug)]
+struct Data4 {
+    data: User
+}
+
+#[derive(Deserialize, Debug)]
+struct User {
+    user: ProfileRepls
+}
+
+#[derive(Deserialize, Debug)]
+struct ProfileRepls {
+    profileRepls: Items3
+}
+
+#[derive(Deserialize, Debug)]
+struct Items3 {
+    pageInfo: PageInfo,
+    items: Vec<MainArray>
+}
+
+pub struct ReplUser {
+    username: String,
+}
+
+impl ReplUser {
+    pub fn new(username: &str) -> Self {
+        Self { username : username.to_string() }
+    }
+
+    pub async fn fetch_urls(&self) -> Vec<String> {
+        let json = json!([
+            {
+                "operationName":"ProfilePublicRepls",
+                "variables":{
+                    "username": &self.username,
+                    "search":""
+                },
+                "query":"query ProfilePublicRepls($username: String!, $after: String, $search: String) {\n  user: userByUsername(username: $username) {\n    id\n    profileRepls: profileRepls(after: $after, search: $search) {\n      items {\n        id\n        ...ProfilePublicReplsRepl\n        __typename\n      }\n      pageInfo {\n        hasNextPage\n        nextCursor\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ProfilePublicReplsRepl on Repl {\n  id\n  description(plainText: true)\n  isOwner\n  pinnedToProfile\n  timeCreated\n  title\n  url\n  iconUrl\n  ...ReplLinkRepl\n  user {\n    id\n    ...UserLinkUser\n    __typename\n  }\n  templateInfo {\n    label\n    iconUrl\n    __typename\n  }\n  multiplayers {\n    id\n    image\n    username\n    __typename\n  }\n  __typename\n}\n\nfragment ReplLinkRepl on Repl {\n  id\n  url\n  nextPagePathname\n  __typename\n}\n\nfragment UserLinkUser on User {\n  id\n  url\n  username\n  __typename\n}\n"
+            }
+        ]);
+        let mut urls = vec![];
+        let mut after = vec![];
+        let client = Client::new();
+        let resp = client
+            .post(GRAPHQL)
+            .header("host", "replit.com")
+            .header(
+                "user-agent",
+                "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0",
+            )
+            .header("origin", "https://replit.com")
+            .header("connection", "keep-alive")
+            .header("x-requested-with", "XMLHttpRequest")
+            .json(&json)
+            .send()
+            .await;
+        if let Ok(resp) = resp {
+            let json = resp.json::<StartUser>().await;
+            match json {
+                Ok(json) => {
+                    let repl = json.start.data.user.profileRepls;
+                    after.push(repl.pageInfo.nextCursor);
+                    for item in repl.items {
+                        urls.push(item.url);
+
+                    }
+                },
+                Err(e) => {
+                    println!("Probably ratelimited, sleeping for 10 seconds\n{e}");
+                    sleep(Duration::from_secs(10)).await;
+                },
+            }
+        }
+        println!("\x1b[0;34m{} URLs loaded...\x1b[0m", urls.len());
+        if after.last().unwrap().is_some() {
+            loop {
+                let json2 = json!([
+                    {
+                        "operationName":"ProfilePublicRepls",
+                        "variables":{
+                            "username": &self.username,
+                            "search":"",
+                            "after": after.last().unwrap(),
+                        },
+                        "query":"query ProfilePublicRepls($username: String!, $after: String, $search: String) {\n  user: userByUsername(username: $username) {\n    id\n    profileRepls: profileRepls(after: $after, search: $search) {\n      items {\n        id\n        ...ProfilePublicReplsRepl\n        __typename\n      }\n      pageInfo {\n        hasNextPage\n        nextCursor\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n\nfragment ProfilePublicReplsRepl on Repl {\n  id\n  description(plainText: true)\n  isOwner\n  pinnedToProfile\n  timeCreated\n  title\n  url\n  iconUrl\n  ...ReplLinkRepl\n  user {\n    id\n    ...UserLinkUser\n    __typename\n  }\n  templateInfo {\n    label\n    iconUrl\n    __typename\n  }\n  multiplayers {\n    id\n    image\n    username\n    __typename\n  }\n  __typename\n}\n\nfragment ReplLinkRepl on Repl {\n  id\n  url\n  nextPagePathname\n  __typename\n}\n\nfragment UserLinkUser on User {\n  id\n  url\n  username\n  __typename\n}\n"
+                    }
+                ]);
+
+                let resp = client
+                    .post(GRAPHQL)
+                    .header("host", "replit.com")
+                    .header(
+                        "user-agent",
+                        "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0",
+                    )
+                    .header("origin", "https://replit.com")
+                    .header("connection", "keep-alive")
+                    .header("x-requested-with", "XMLHttpRequest")
+                    .json(&json2)
+                    .send()
+                    .await;
+                if let Ok(resp) = resp {
+                    let json = resp.json::<StartUser>().await;
+                    match json {
+                        Ok(json) => {
+                            let repl = json.start.data.user.profileRepls;
+
+                            if repl.items.is_empty() {
+                                break;
+                            } else {
+                                for item in repl.items {
+                                    urls.push(item.url);
+                                }
+                            }
+
+                            if repl.pageInfo.nextCursor.is_none() {
+                                break;
+                            } else {
+                                after.push(repl.pageInfo.nextCursor);
+                            }
+                        },
+                        Err(e) => {
+                            println!("Probably ratelimited, sleeping for 10 seconds\n{e}");
+                            sleep(Duration::from_secs(10)).await;
+                        },
+                    }
+                }
+                println!("\x1b[0;34m{} URLs loaded...\x1b[0m", urls.len());
+            }
+        }
+        urls
+    }
+}
+
+
 
 pub struct ReplAPI {}
 
@@ -384,6 +526,92 @@ impl ReplAPI {
         }
         all_urls
     }
+
+    pub async fn fetch_zips_user(&self, username: &str) -> Vec<Vec<u8>> {
+        let repl = ReplUser::new(username);
+        let urls = repl.fetch_urls().await;
+        let mut count = 1;
+        let mut chunk_count = 0;
+        let mut zips = vec![];
+        let client = Client::new();
+        let mut urls = urls.into_iter().peekable();
+        let mut futs = FuturesUnordered::new();
+        while let Some(url) = urls.next() {
+            futs.push(fetch_zip(client.clone(), url, count));
+            count += 1;
+            chunk_count += 1;
+            if urls.peek().is_none()
+                || chunk_count >= 50
+            {
+                while let Some(val) = futs.next().await {
+                    if let Some(val) = val {
+                        zips.push(val)
+                    }
+                }
+                chunk_count = 0;
+            }
+        }
+        zips
+    }
+
+    pub async fn fetch_zips_with_forks_user(&self, username: &str, max_count: u32) -> Vec<Vec<u8>> {
+        let repl = ReplUser::new(username);
+        let urls = repl.fetch_urls().await;
+        let mut count = 1;
+        let mut chunk_count = 0;
+        let mut zips = vec![];
+        let client = Client::new();
+        let mut urls = urls.into_iter().peekable();
+        let mut other_urls = urls.clone();
+        let mut futs = FuturesUnordered::new();
+        while let Some(url) = urls.next() {
+            futs.push(fetch_zip(client.clone(), url.clone(), count));
+            count += 1;
+            chunk_count += 1;
+            if urls.peek().is_none()
+                || chunk_count >= 50
+            {
+                while let Some(val) = futs.next().await {
+                    if let Some(val) = val {
+                        zips.push(val)
+                    }
+                }
+                chunk_count = 0;
+            }
+        }
+        while let Some(url) = other_urls.next() {
+            let repl = ReplUrl::new(&url);
+            let id = repl.fetch_id().await;
+            let urls = repl.fetch_forks(&id).await;
+            let mut fork_urls = urls.into_iter().peekable();
+            let mut count = 1;
+            let mut chunk_count = 0;
+            while let Some(url) = fork_urls.next() {
+                futs.push(fetch_zip(client.clone(), url, count));
+                count += 1;
+                chunk_count += 1;
+                if fork_urls.peek().is_none()
+                    || chunk_count >= 50
+                    || chunk_count >= max_count
+                    || count >= max_count
+                {
+                    while let Some(val) = futs.next().await {
+                        if let Some(val) = val {
+                            zips.push(val)
+                        }
+                    }
+                    chunk_count = 0;
+                }
+                if count > max_count {
+                    break;
+                }
+            }
+        }
+
+        zips
+    }
+
+
 }
 
 pub async fn fetch_zip(client: Client, url: String, count: u32) -> Option<Vec<u8>> {
@@ -423,7 +651,7 @@ pub async fn fetch_zip(client: Client, url: String, count: u32) -> Option<Vec<u8
                         }
 
                     }
-                    println!("\x1b[0;34mFinished downloading fork {}...\x1b[0m", &count);
+                    println!("\x1b[0;34mFinished downloading URL {}...\x1b[0m", &count);
                     return Some(src);
 
                 } else if resp.status().as_str() == "429" {

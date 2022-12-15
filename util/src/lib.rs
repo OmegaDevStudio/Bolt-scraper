@@ -47,12 +47,11 @@ pub async fn search_extract(src: Vec<u8>, count: u32) -> Vec<String> {
 
     for entry in walker.filter_entry(|e| !is_hidden(e)) {
         let path = match &entry.as_ref() {
-            Ok(x) => x.path().to_owned(),
+            Ok(x) => x.path(),
             Err(_) => continue,
-    };
-    let md = metadata(&path).await;
-    match md {
-        Ok(md) => {
+        };
+        let md = metadata(&path).await;
+        if let Ok(md) = md {
             if md.is_file() {
                 if let Ok(file) = fs::read_to_string(&path).await {
                     for token in token_regex.find_iter(&file) {
@@ -60,24 +59,13 @@ pub async fn search_extract(src: Vec<u8>, count: u32) -> Vec<String> {
                     }
                 };
             }
-        },
-        Err(_) => {
-            println!("\x1b[0;91mPath: {path:?} is not a file\x1b[0m");
-            continue
-        },
+        }
     }
-}
-    match fs::remove_dir_all("./data").await {
-        Ok(_) => {},
-        Err(e) => {
-            println!("\x1b[0;91mError: {e:?}\x1b[0m");
-        }
+    if let Err(e) = fs::remove_dir_all("./data").await {
+        println!("\x1b[0;91mError: {e}\x1b[0m");
     };
-    match fs::create_dir("./data").await {
-        Ok(_) => {},
-        Err(e) => {
-            println!("\x1b[0;91mError: {e:?}\x1b[0m");
-        }
+    if let Err(e) = fs::create_dir("./data").await {
+        println!("\x1b[0;91mError: {e}\x1b[0m");
     }
     println!("\x1b[0;92mFinished searching extract {count}...\x1b[0m");
     tokens

