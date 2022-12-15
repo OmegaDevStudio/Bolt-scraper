@@ -458,6 +458,7 @@ impl ReplUser {
                                 for item in repl.items {
                                     urls.push(item.url);
                                 }
+                                println!("\x1b[0;34m{} URLs loaded...\x1b[0m", urls.len());
                             }
 
                             if repl.pageInfo.nextCursor.is_none() {
@@ -472,7 +473,7 @@ impl ReplUser {
                         },
                     }
                 }
-                println!("\x1b[0;34m{} URLs loaded...\x1b[0m", urls.len());
+
             }
         }
         urls
@@ -616,7 +617,7 @@ impl ReplAPI {
 
 pub async fn fetch_zip(client: Client, url: String, count: u32) -> Option<Vec<u8>> {
     let url = format!("https://replit.com{url}.zip");
-    println!("\x1b[0;93mStarted downloading fork {}...\x1b[0m", &count);
+    println!("\x1b[0;93mStarted downloading URL {}...\x1b[0m", &count);
     loop {
         let resp = client.get(&url)
         .header("accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")

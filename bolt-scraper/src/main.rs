@@ -21,9 +21,9 @@ async fn main() {
     if cfg!(target_os = "windows") {
         std::process::Command::new("cmd").arg("/C").arg("color");
     }
-    clear();
-    cli();
     loop {
+        clear();
+        cli();
         options();
         let option = input!("
 \x1b[0;34m╔═══ \x1b[0;91m╬ Please enter an Option ╬
