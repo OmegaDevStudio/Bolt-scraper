@@ -21,6 +21,12 @@ impl fmt::Display for Token {
     }
 }
 
+static DISCORD_URLS: [&str; 4] = [
+    "https://discord.com",
+    "https://canary.discord.com",
+    "https://ptb.discord.com",
+    "https://discordapp.com"
+];
 
 
 
@@ -136,9 +142,9 @@ impl Webhook {
 }
 
 
-pub async fn check_user(client: Client, token: String) -> Option<Token> {
+pub async fn check_user(client: Client, token: String, url: &str) -> Option<Token> {
     loop {
-        let resp = client.get("https://discord.com/api/v9/users/@me/library")
+        let resp = client.get(format!("{url}/api/v9/users/@me/library"))
             .header("authorization", token.clone())
             .header("user-agent", "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0")
             .header("origin", "https://discord.com")
@@ -170,9 +176,10 @@ pub async fn check_user(client: Client, token: String) -> Option<Token> {
     }
 }
 
-pub async fn check_bot(client: Client, token: String) -> Option<Token> {
+
+pub async fn check_bot(client: Client, token: String, url: &str) -> Option<Token> {
     loop {
-        let resp = client.get("https://discord.com/api/v9/users/@me")
+        let resp = client.get(format!("{url}/api/v9/users/@me"))
             .header("authorization", format!("Bot {}",token.clone()))
             .send().await;
         match resp {
@@ -274,11 +281,14 @@ impl Discord {
     pub async fn mass_check_user(&self) -> Vec<Token> {
         let client = Client::new();
         let mut futs = FuturesUnordered::new();
-        let mut tokens = self.tokens.clone().into_iter().unique().peekable();
+        let tokens = self.tokens.clone().into_iter().unique().peekable();
+        let disc_urls = DISCORD_URLS.into_iter().cycle();
+        let mut tokens = tokens.zip(disc_urls).unique().peekable();
         let mut chunk_count = 0;
         let mut tok_vec = vec!();
-        while let Some(token) = tokens.next() {
-            futs.push(check_user(client.clone(), token));
+
+        while let Some((token,url)) = tokens.next() {
+            futs.push(check_user(client.clone(), token, url));
             chunk_count += 1;
             if tokens.peek().is_none() || chunk_count >= 100 {
                 while let Some(items) = futs.next().await {
@@ -295,11 +305,14 @@ impl Discord {
     pub async fn mass_check_bot(&self) -> Vec<Token> {
         let client = Client::new();
         let mut futs = FuturesUnordered::new();
-        let mut tokens = self.tokens.clone().into_iter().unique().peekable();
+        let tokens = self.tokens.clone().into_iter().unique().peekable();
+        let disc_urls = DISCORD_URLS.into_iter().cycle();
+        let mut tokens = tokens.zip(disc_urls).unique().peekable();
         let mut chunk_count = 0;
         let mut tok_vec = vec!();
-        while let Some(token) = tokens.next() {
-            futs.push(check_bot(client.clone(), token));
+
+        while let Some((token,url)) = tokens.next() {
+            futs.push(check_bot(client.clone(), token, url));
             chunk_count += 1;
             if tokens.peek().is_none() || chunk_count >= 100 {
                 while let Some(items) = futs.next().await {
@@ -312,4 +325,6 @@ impl Discord {
         }
         tok_vec
     }
+
+
 }
