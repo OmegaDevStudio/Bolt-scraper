@@ -21,21 +21,15 @@ impl fmt::Display for Token {
     }
 }
 
-static DISCORD_URLS: [&str; 4] = [
-    "https://discord.com",
-    "https://canary.discord.com",
-    "https://ptb.discord.com",
+static DISCORD_URLS: [&str; 3] = [
+    "https://canary.discordapp.com",
+    "https://ptb.discordapp.com",
     "https://discordapp.com"
 ];
 
 
 
-#[test]
-fn enum_testing() {
-    println!("OKwoakdoawd");
-    let token = Token::Bot("Penis".to_string());
-    println!("TGsetset {}", token);
-}
+
 // For discord ratelimits
 #[derive(Serialize, Deserialize, Debug)]
 struct Retry {
