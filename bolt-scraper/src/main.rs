@@ -1,13 +1,13 @@
 use discord_api::{Discord, Webhook};
 use repl_api::{ReplAPI, ReplGlobal, fetch_zip};
-use ascii::{cli, options, clear};
+use ascii::{cli, options, clear, input};
 use util::{search_extract, write_file, fetch_lines};
 use tokio::main;
 use serde::Deserialize;
 use serde_json::from_str;
 use std::fs;
 use reqwest::Client;
-use input_macro::input;
+
 
 
 #[derive(Debug, Deserialize)]
@@ -25,26 +25,17 @@ async fn main() {
         clear();
         cli();
         options();
-        let option = input!("
-\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter an Option ╬
-\x1b[0;34m║
-\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+        let option = input("Please enter an option", None);
         let option = option.trim().parse::<u32>();
 
         match option {
             Ok(option) => {
             match option {
                 1 => {
-                    let url = input!("
-\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter a URL to scrape ╬ Example URL: /@someone/repo ╬
-\x1b[0;34m║
-\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+                    let url = input("Please enter a URL to scrape", Some("Example URL: /@someone/repo"));
 
 
-                    let max = input!("
-\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter the maximum you want to scrape ╬
-\x1b[0;34m║
-\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+                    let max = input("Please enter the maximum you want to scrape", None);
                     let max = max.trim().parse::<u32>().unwrap();
 
                     scrape_url(url.trim(), max).await;
@@ -53,27 +44,15 @@ async fn main() {
 
                 3 => {
 
-                    let max = input!("
-\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter the maximum you want to scrape ╬
-\x1b[0;34m║
-\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+                    let max = input("Please enter the maximum you want to scrape", None);
                     let max = max.trim().parse::<u32>().unwrap();
                     auto_scrape(max).await
                 },
                 4 => {
-                    let username = input!("
-\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter a Username to scrape ╬ Example Username: YourMom ╬
-\x1b[0;34m║
-\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
-                    let forks_option = input!("
-\x1b[0;34m╔═══ \x1b[0;91m╬ Would you like to scrape the forks? ╬ Y/N ╬
-\x1b[0;34m║
-\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+                    let username = input("Please enter a username to scrape", Some("Example Username: YourMom"));
+                    let forks_option = input("Would you like to scrape the forks?", None);
                     if forks_option.to_lowercase() == "y" {
-                        let max = input!("
-\x1b[0;34m╔═══ \x1b[0;91m╬ Please enter the maximum you want to scrape ╬
-\x1b[0;34m║
-\x1b[0;34m╚══[\x1b[0;93m>\x1b[0;34m]\x1b[0m ");
+                        let max = input("Please enter the maximum you want to scrape", None);
                         user_scrape_with_fork(username, Some(max.parse::<u32>().unwrap())).await;
                     } else {
                         user_scrape(username).await;

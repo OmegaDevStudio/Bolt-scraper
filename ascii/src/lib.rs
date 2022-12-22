@@ -1,5 +1,5 @@
 use colorful::{Colorful, Color};
-
+use input_macro::input;
 pub fn clear() {
   if cfg!(target_os = "windows") {
     std::process::Command::new("cls").status().unwrap();
@@ -9,22 +9,44 @@ pub fn clear() {
 }
 
 pub fn cli() {
-    println!("{}", "
-              ▀██▀▀█▄    ▄▄█▀▀██   ▀██▀     █▀▀██▀▀█
-               ██   ██  ▄█▀    ██   ██         ██
-               ██▀▀▀█▄  ██      ██  ██         ██
-               ██    ██ ▀█▄     ██  ██         ██
-              ▄██▄▄▄█▀   ▀▀█▄▄▄█▀  ▄██▄▄▄▄▄█  ▄██▄
-    ".gradient_with_color(Color::LightCyan, Color::Magenta));
+  println!("{}\n",
+  "              ▀██▀▀█▄    ▄▄█▀▀██   ▀██▀     █▀▀██▀▀█\n               ██   ██  ▄█▀    ██▄  ██         ██\n               ██▀▀▀█▄  ██      ██  ██         ██\n               ██    ██ ▀█▄     ██  ██         ██\n              ▄██▄▄▄█▀   ▀▀█▄▄▄█▀  ▄██▄▄▄▄▄█  ▄██▄".gradient(Color::LightCyan)
+  );
 }
 
 
 pub fn options() {
-    println!("{}", "
-╔════════════════════════════════╬═════════════════════════════════╗
+  println!("{}\n\n",
+"╔════════════════════════════════╬═════════════════════════════════╗
 ║  1. Scrape forks URL                 3. Auto scrape              ║
 ║  2. Check tokens in tokens.txt       4. Scrape User repls        ║
-╚════════════════════════════════╬═════════════════════════════════╝
-    "
-    .gradient_with_color(Color::LightCyan, Color::LightMagenta));
+╚════════════════════════════════╬═════════════════════════════════╝".gradient(Color::LightCyan))
+}
+
+
+pub fn input(prompt: &str, example: Option<&str>) -> String {
+  if let Some(eg) = example {
+
+    let message = format!(
+"╔═══ ╬ {prompt} ╬ {eg} ╬
+║
+╚══[>]");
+
+    let val = input!("{} ", message.gradient(Color::Red));
+    println!("");
+
+    val
+  } else {
+
+    let message = format!(
+"╔═══ ╬ {prompt} ╬
+║
+╚══[>]");
+
+    let val = input!("{} ", message.gradient(Color::Red));
+    println!("");
+
+    val
+  }
+
 }

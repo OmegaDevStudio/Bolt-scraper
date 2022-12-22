@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 colorful = "0.2.1"
+input-macro = "0.2.0"
