@@ -25,6 +25,7 @@ pub fn options() {
 
 
 pub fn input(prompt: &str, example: Option<&str>) -> String {
+  let gradient = Color::LightCyan1;
   if let Some(eg) = example {
 
     let message = format!(
@@ -32,8 +33,8 @@ pub fn input(prompt: &str, example: Option<&str>) -> String {
 ║
 ╚══[>]");
 
-    let val = input!("{} ", message.gradient(Color::Red));
-    println!("");
+    let val = input!("{} ", message.gradient(gradient));
+    println!();
 
     val
   } else {
@@ -43,8 +44,8 @@ pub fn input(prompt: &str, example: Option<&str>) -> String {
 ║
 ╚══[>]");
 
-    let val = input!("{} ", message.gradient(Color::Red));
-    println!("");
+    let val = input!("{} ", message.gradient(gradient));
+    println!();
 
     val
   }

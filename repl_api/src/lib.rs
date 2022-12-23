@@ -5,7 +5,7 @@ use reqwest::Client;
 use serde_json::json;
 use tokio::time::{sleep, Duration};
 use serde::Deserialize;
-use serde_query;
+
 
 const GRAPHQL: &str = "https://replit.com/graphql";
 
@@ -288,7 +288,7 @@ impl ReplGlobal {
                         sleep(Duration::from_secs(10)).await;
                     },
                 }
-                
+
             }
         }
         urls
