@@ -1,6 +1,9 @@
 # Bolt Scraper
 The Fastest Replit.com discord token scraper. Designed to gather discord tokens from replit, using multiple different methods.
 
+# BROKEN 😔
+This broke due to repl api changes. Broken for now/
+
 ## Setup
 
 If you want to, you may add your desired webhook url to config.json.
